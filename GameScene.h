@@ -54,7 +54,10 @@ public: // メンバ関数
 private: // メンバ変数
 	DirectXCommon* dxCommon = nullptr;
 	Input* input = nullptr;
-	DebugText debugText;	
+	DebugText debugText;
+
+	Sprite* sprite1 = nullptr;
+	Sprite* sprite2 = nullptr;
 
 	/// <summary>
 	/// ゲームシーン用
@@ -62,4 +65,11 @@ private: // メンバ変数
 	Sprite* spriteBG = nullptr;
 	Object3d* object3d = nullptr;
 };
+
+template<class Type>
+inline void safe_delete(Type*& p)
+{
+	delete p;
+	p = nullptr;
+}
 
