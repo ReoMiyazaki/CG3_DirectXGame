@@ -38,6 +38,9 @@ public: // サブクラス
 		XMMATRIX mat;	// ３Ｄ変換行列
 	};
 
+	// 座標の取得
+	const XMFLOAT2& GetPosition() { return position; }
+
 public: // 静的メンバ関数
 
 	/// <summary>

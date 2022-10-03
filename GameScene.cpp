@@ -9,8 +9,10 @@ GameScene::GameScene()
 
 GameScene::~GameScene()
 {
-	delete spriteBG;
-	delete object3d;
+	safe_delete(spriteBG);
+	safe_delete(object3d);
+	safe_delete(sprite1);
+	safe_delete(sprite2);
 }
 
 void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
@@ -35,6 +37,14 @@ void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
 	// 3Dオブジェクト生成
 	object3d = Object3d::Create();
 	object3d->Update();
+
+	// テクスチャ2番に読み込み
+	Sprite::LoadTexture(2, L"Resources/texture.png");
+
+	// 座標{ 0, 0 }に、テクスチャ2番のスプライトを生成
+	sprite1 = Sprite::Create(2, { 0,0 });
+	// 座標{ 500, 500 }にテクスチャ2番のスプライトを生成
+	sprite2 = Sprite::Create(2, { 500, 500 }, { 1,0,0,1 }, { 0,0 }, false, true);
 }
 
 void GameScene::Update()
@@ -65,6 +75,17 @@ void GameScene::Update()
 	}
 
 	object3d->Update();
+
+	// スペースキーを押していたら
+	if (input->PushKey(DIK_SPACE))
+	{
+		// 現在の座標を取得
+		XMFLOAT2 position = sprite1->GetPosition();
+		// 移動後の座標を計算
+		position.x += 1.0f;
+		// 座標の変更を反映
+		sprite1->SetPosition(position);
+	}
 }
 
 void GameScene::Draw()
@@ -82,6 +103,9 @@ void GameScene::Draw()
 	/// ここに背景スプライトの描画処理を追加できる
 	/// </summary>
 
+	sprite1->Draw();
+	sprite2->Draw();
+
 	// スプライト描画後処理
 	Sprite::PostDraw();
 	// 深度バッファクリア
@@ -93,7 +117,7 @@ void GameScene::Draw()
 	Object3d::PreDraw(cmdList);
 
 	// 3Dオブクジェクトの描画
-	object3d->Draw();
+//	object3d->Draw();
 
 	/// <summary>
 	/// ここに3Dオブジェクトの描画処理を追加できる
