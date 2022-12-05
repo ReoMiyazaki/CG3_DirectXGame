@@ -150,8 +150,11 @@ private: // 静的メンバ変数
 	// 頂点データ配列
 	static VertexPosNormalUv vertices[vertexCount];
 	// 頂点インデックス配列
-//	static unsigned short indices[planeCount * 3];
 	static unsigned short indices[indexCount];
+	// ビルボード行列
+	static XMMATRIX matBillboard;
+	// Y軸周りビルボード行列
+	static XMMATRIX matBillboardY;
 
 private:// 静的メンバ関数
 	/// <summary>
