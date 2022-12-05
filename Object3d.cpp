@@ -32,6 +32,8 @@ D3D12_VERTEX_BUFFER_VIEW Object3d::vbView{};
 D3D12_INDEX_BUFFER_VIEW Object3d::ibView{};
 Object3d::VertexPosNormalUv Object3d::vertices[vertexCount];
 unsigned short Object3d::indices[indexCount];
+XMMATRIX Object3d::matBillboard = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboardY = XMMatrixIdentity();
 
 void Object3d::StaticInitialize(ID3D12Device* device, int window_width, int window_height)
 {
@@ -171,7 +173,7 @@ void Object3d::InitializeCamera(int window_width, int window_height)
 		0, window_width,
 		window_height, 0,
 		0, 1);*/
-	// 透視投影による射影行列の生成
+		// 透視投影による射影行列の生成
 	matProjection = XMMatrixPerspectiveFovLH(
 		XMConvertToRadians(60.0f),
 		(float)window_width / window_height,
@@ -498,28 +500,28 @@ void Object3d::CreateModel()
 
 	// 法線方向の計算
 
-	//for (int i = 0; i < _countof(indices) / 3; i++)
-	//{// 三角形１つごとに計算していく
-	//	// 三角形のインデックスを取得
-	//	unsigned short index0 = indices[i * 3 + 0];
-	//	unsigned short index1 = indices[i * 3 + 1];
-	//	unsigned short index2 = indices[i * 3 + 2];
-	//	// 三角形を構成する頂点座標をベクトルに代入
-	//	XMVECTOR p0 = XMLoadFloat3(&vertices[index0].pos);
-	//	XMVECTOR p1 = XMLoadFloat3(&vertices[index1].pos);
-	//	XMVECTOR p2 = XMLoadFloat3(&vertices[index2].pos);
-	//	// p0→p1ベクトル、p0→p2ベクトルを計算
-	//	XMVECTOR v1 = XMVectorSubtract(p1, p0);
-	//	XMVECTOR v2 = XMVectorSubtract(p2, p0);
-	//	// 外積は両方から垂直なベクトル
-	//	XMVECTOR normal = XMVector3Cross(v1, v2);
-	//	// 正規化（長さを1にする)
-	//	normal = XMVector3Normalize(normal);
-	//	// 求めた法線を頂点データに代入
-	//	XMStoreFloat3(&vertices[index0].normal, normal);
-	//	XMStoreFloat3(&vertices[index1].normal, normal);
-	//	XMStoreFloat3(&vertices[index2].normal, normal);
-	//}
+	/*for (int i = 0; i < _countof(indices) / 3; i++)
+	{// 三角形１つごとに計算していく
+		// 三角形のインデックスを取得
+		unsigned short index0 = indices[i * 3 + 0];
+		unsigned short index1 = indices[i * 3 + 1];
+		unsigned short index2 = indices[i * 3 + 2];
+		// 三角形を構成する頂点座標をベクトルに代入
+		XMVECTOR p0 = XMLoadFloat3(&vertices[index0].pos);
+		XMVECTOR p1 = XMLoadFloat3(&vertices[index1].pos);
+		XMVECTOR p2 = XMLoadFloat3(&vertices[index2].pos);
+		// p0→p1ベクトル、p0→p2ベクトルを計算
+		XMVECTOR v1 = XMVectorSubtract(p1, p0);
+		XMVECTOR v2 = XMVectorSubtract(p2, p0);
+		// 外積は両方から垂直なベクトル
+		XMVECTOR normal = XMVector3Cross(v1, v2);
+		// 正規化（長さを1にする)
+		normal = XMVector3Normalize(normal);
+		// 求めた法線を頂点データに代入
+		XMStoreFloat3(&vertices[index0].normal, normal);
+		XMStoreFloat3(&vertices[index1].normal, normal);
+		XMStoreFloat3(&vertices[index2].normal, normal);
+	}*/
 
 	// 四角形の頂点データ
 	VertexPosNormalUv verticesSquare[]
@@ -645,6 +647,30 @@ void Object3d::UpdateViewMatrix()
 	XMVECTOR translation = XMVectorSet(tX.m128_f32[0], tY.m128_f32[1], tZ.m128_f32[2], 1.0f);
 	// ビュー行列に平行移動成分を設定
 	matView.r[3] = translation;
+#pragma region 全方向ビルボード行列の計算
+	// ビルボード行列
+	matBillboard.r[0] = cameraAxisX;
+	matBillboard.r[1] = cameraAxisY;
+	matBillboard.r[2] = cameraAxisZ;
+	matBillboard.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
+#pragma region Y軸回りビルボード行列の計算
+	// カメラX軸、Y軸、Z軸
+	XMVECTOR ybillCameraAxisX, ybillCameraAxisY, ybillCameraAxisZ;
+
+	// X軸は共通
+	ybillCameraAxisX = cameraAxisX;
+	// Y軸はワールド座標系のY軸
+	ybillCameraAxisY = XMVector3Normalize(upVector);
+	// Z軸はX軸→Y軸の外積で求まる
+	ybillCameraAxisZ = XMVector3Cross(ybillCameraAxisX, ybillCameraAxisY);
+
+	// Y軸回りビルボード行列
+	matBillboardY.r[0] = ybillCameraAxisX;
+	matBillboardY.r[1] = ybillCameraAxisY;
+	matBillboardY.r[2] = ybillCameraAxisZ;
+	matBillboardY.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
 }
 
 bool Object3d::Initialize()
@@ -685,9 +711,11 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
-	matWorld *= matScale; // ワールド行列にスケーリングを反映
-	matWorld *= matRot; // ワールド行列に回転を反映
-	matWorld *= matTrans; // ワールド行列に平行移動を反映
+
+	matWorld *= matBillboardY;	// ビルボード行列をかける
+	matWorld *= matScale;	// ワールド行列にスケーリングを反映
+	matWorld *= matRot;		// ワールド行列に回転を反映
+	matWorld *= matTrans;	// ワールド行列に平行移動を反映
 
 	// 親オブジェクトがあれば
 	if (parent != nullptr) {
